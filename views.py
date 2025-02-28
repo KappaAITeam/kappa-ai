@@ -9,6 +9,7 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 from model import *
+from fastapi.middleware.cors import CORSMiddleware
 
 # Load environment variables
 load_dotenv()
@@ -22,7 +23,13 @@ llm = ChatGroq(api_key=GROQ_API_KEY,
 
 # Initialize FastAPI
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # AI instruction template
 template_string = """ 
 You're a chat buddy named Maggi, ready to keep your friend company. 
@@ -68,7 +75,8 @@ def login_user(form_data:OAuth2PasswordRequestForm =Depends()):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     token_payload = {
-        "sub": user.username
+        "sub": user.username,
+        "userId": user.id
         #"exp": datetime.datetime() + datetime.timedelta(hours=1)  # Token expires in 1 hour
     }
     #jwt can be use to manage data validity her
