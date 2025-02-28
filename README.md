@@ -1,4 +1,3 @@
-```markdown
 # FastAPI Project
 
 This is a simple FastAPI project serving as a foundation for building web APIs. The main application is defined in the `views.py` file.
@@ -51,4 +50,3 @@ Contributions are welcome! Please open an issue or submit a pull request if you 
 ## License
 
 This project is licensed under the MIT License.
-```
