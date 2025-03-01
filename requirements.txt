@@ -9,7 +9,7 @@ certifi==2025.1.31
 charset-normalizer==3.4.1
 distro==1.9.0
 dotenv==0.9.9
-fastapi==0.115.9
+fastapi[standard]
 frozenlist==1.5.0
 greenlet==3.1.1
 groq==0.18.0
@@ -44,3 +44,4 @@ typing_extensions==4.12.2
 urllib3==2.3.0
 yarl==1.18.3
 zstandard==0.23.0
+langgraph==0.3.2

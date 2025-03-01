@@ -1,6 +1,7 @@
 .env
 .idea
 .venv
+venv
 chat_history1.db
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
