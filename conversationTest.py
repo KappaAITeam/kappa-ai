@@ -70,7 +70,7 @@ def converse(character_name: str, character_description: str, username: str, pro
         pass
 
     graph = graph_builder.compile(checkpointer=memory)
-    config = {"configurable": {"thread_id": f"{character_name.replace(" ", "_")}_{username.replace(' ','_')}"}}
+    config = {"configurable": {"thread_id": f"{character_name.replace(' ', '_')}_{username.replace(' ','_')}"}}
 
     # Stream the conversation events and extract the AI response.
     ai_response = ""
