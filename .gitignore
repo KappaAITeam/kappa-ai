@@ -7,3 +7,4 @@ chat_history1.db
 !.elasticbeanstalk/*.cfg.yml
 !.elasticbeanstalk/*.global.yml
 .ebextensions/*
+01_fastapi.config
