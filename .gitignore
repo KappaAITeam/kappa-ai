@@ -2,3 +2,7 @@
 .idea
 .venv
 chat_history1.db
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
