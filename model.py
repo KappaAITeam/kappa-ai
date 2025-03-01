@@ -56,3 +56,9 @@ class Message(BaseModel):
     password: str
     username: str
     message: str
+
+class PromptMessage(BaseModel):
+    character_name: str
+    character_description: str
+    username: str
+    prompt: str

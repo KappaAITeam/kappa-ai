@@ -34,7 +34,7 @@ This is a simple FastAPI project serving as a foundation for building web APIs. 
 Start the FastAPI server using Uvicorn:
 
 ```bash
-fastapi dev views.py
+uvicorn views:app --reload
 ```
 
 The application will be available at [http://127.0.0.1:8000](http://127.0.0.1:8000).
@@ -42,6 +42,7 @@ The application will be available at [http://127.0.0.1:8000](http://127.0.0.1:80
 ## API Documentation
 
 - **Swagger UI:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **ReDoc:** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
 ## Contributing
 

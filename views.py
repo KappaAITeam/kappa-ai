@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from typing import List
 from model import *
 from fastapi.middleware.cors import CORSMiddleware
-
+from conversationTest import converse
 # Load environment variables
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -174,3 +174,14 @@ async def chat_text(request: Message):
     response = chat_with_ai(prompt_user["user_id"], get_msg)
 
     return response
+
+@app.post("/converse")
+async def handle_conversation(body: PromptMessage):
+    # chat with AI
+    response = converse(
+        character_name=body.character_name,
+        username=body.username,
+        prompt=body.prompt,
+        character_description=body.character_description
+    )
+    return {"message": response}
