@@ -1,10 +1,5 @@
-import os
 import bcrypt
-import datetime
-import json
-from pathlib import Path
-from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Depends
 from langchain.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
@@ -32,20 +27,59 @@ app.add_middleware(
     allow_headers=["*"],
 )
 # AI instruction template
-template_string = """ 
-You're a chat buddy named Maggi, ready to keep your friend company. 
-Respond to the user input in a style that is {style}.\n
+# default initiate conversation
+# after the conversation will appear in history
+default_conversation = {
+    "sophia12345ai": "You're an AI Assistant and your name is Sophia, with\
+        philosophical mind that encourages deep thinking and introspection. \
+            Respond in style that is {style}. \
+            User request begin after the triple backtick and your \
+                responses follows alternatively User:```{input}",
 
-user:{input}
-"""
+    "leo12345ai": "You're an AI Assistant and your name is Leo, with\
+        a creative spirit to inspire your artistic endeavors and imagination. \
+            Respond in style that is {style}. \
+            User request begin after the triple backtick and your \
+                responses follows alternatively User:```{input}",
+
+    "alex12345ai": "You're an AI Assistant and your name is Alex, \
+        a motivational coach to help you achieve your goals and stay focused. \
+            Respond in style that is {style}. \
+            User request begin after the triple backtick and your \
+                responses follows alternatively User:```{input}",
+
+    "jamie12345ai": "You're an AI Assistant and your name is Jamie, \
+        a friendly companion for everyday conversations and light-hearted chats. \
+            Respond in style that is {style}. \
+            User request begin after the triple backtick and your \
+                responses follows alternatively User:```{input}",
+
+    "morgan12345ai": "You're an AI Assistant and your name is Morgan, \
+        a practical advisor for problem-solving and strategic thinking. \
+            Respond in style that is {style}.  \
+            User request begin after the triple backtick and your \
+                responses follows alternatively User:```{input}",
+
+    "harper12345ai": "You're an AI Assistant and your name is Harper, \
+        a history enthusiast with knowledge spanning various periods and cultures. \
+            Respond in style that is {style}. \
+            User request begin after the triple backtick and your \
+                responses follows alternatively User:```{input}",
+
+}
+
 
 # AI response style
 response_style = """British English in a calm and respectful tone."""
 
 # Instantiate prompt
-prompt_template = ChatPromptTemplate.from_template(
-    template_string
-)
+# function to handle prompt input
+def use_prompt(ai_character_id,style:str,prompt:str):
+    prompt_template = ChatPromptTemplate.from_template(
+    default_conversation[ai_character_id] ).format_messages(
+        style=style, input=prompt
+        )
+    return prompt_template
 
 # Predefined AI characters (unchanged)
 PREDEFINED_CHARACTERS = [
@@ -73,12 +107,11 @@ async def get_predefined_characters():
 @app.post("/register")
 def register_user(request: CreateUser):
     db = SessionLocal()
-    hash_password = bcrypt.hashpw(request.password.encode(
-        "utf-8"), bcrypt.gensalt()).decode("utf-8")
+    hash_password = bcrypt.hashpw(request.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     db_user = db.query(User).filter(User.username == request.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username already exists")
-    new_user = User(username=request.username, hashed_password=hash_password)
+    new_user = User(username=request.username, hashed_password=hash_password, image=request.image)
 
     db.add(new_user)
     db.commit()
@@ -100,20 +133,20 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token_payload = {
-        "sub": user.username,
-        "userId": user.id
-        #"exp": datetime.datetime() + datetime.timedelta(hours=1)  # Token expires in 1 hour
+        "username": user.username,
+        "image": user.image,
+        "user_id": user.id
+        # "exp": datetime.datetime() + datetime.timedelta(hours=1)  # Token expires in 1 hour
     }
     # jwt can be use to manage data validity her
 
     return {"response": token_payload}
 
 # function to store chat message
-
-
-def store_chat_message(user_id: int, message):
+#function to store chat message
+def store_chat_message(user_id: int, message:str, ai_character_id:str):
     db = SessionLocal()
-    chat_entry = ChatHistory(user_id=user_id, message=message)
+    chat_entry=ChatHistory(user_id=user_id,message=message, ai_character_id=ai_character_id)
     db.add(chat_entry)
     db.commit()
     db.close()
@@ -128,20 +161,39 @@ def get_user(password: str, username: str):
     return {"user_id": user.id, "username": user.username}
 
 
-def retrieve_chat(user_id: int, message: str):
+# Retrieve previous conversation
+def retrieve_previous_chat(user_id: int, ai_id: str):
+    db = SessionLocal()
+
+    if not db.query(AiUserStartChat).filter(
+            (AiUserStartChat.user_id == user_id) & (AiUserStartChat.ai_character_id == ai_id)):
+        return {"response": ""}
+
+    else:
+        messages = db.query(ChatHistory).filter(
+            (ChatHistory.user_id == user_id) & (ChatHistory.ai_character_id == ai_id)).order_by(
+            ChatHistory.id.asc()).all()
+        db.close()
+        prompt = {"user_id": user_id, "chat_history": [{"id": msg.id, "message": msg.message} for msg in messages]}
+        return prompt["chat_history"]
+
+
+def retrieve_chat(user_id: int, ai_id: str, message: str):
     db = SessionLocal()
     messages = db.query(ChatHistory).filter(
-        ChatHistory.user_id == user_id).all()
+        (ChatHistory.user_id == user_id) & (ChatHistory.ai_character_id == ai_id)).all()
     db.close()
 
     if not messages:
-        prompt = prompt_template.format_messages(
-            style=response_style, input=message
-        )
+        prompt = use_prompt(ai_id, response_style, prompt=message)
+        new_chat = AiUserStartChat(user_id=user_id,
+                                   ai_character_id=ai_id)  # just to keep user initiate conversation with AI
+        db.add(new_chat)
+        db.commit()
+        db.close()
         return prompt
 
-    prompt = {"user_id": user_id, "chat_history": [
-        {"message": msg.message} for msg in messages]}
+    prompt = {"user_id": user_id, "chat_history": [{"message": msg.message} for msg in messages]}
     prompt["chat_history"].append({"message": message})
     new_prompt = []
     for item in prompt["chat_history"]:
@@ -150,16 +202,24 @@ def retrieve_chat(user_id: int, message: str):
     return new_prompt
 
 
-def chat_with_ai(user_id: str, prompt: str):
+def chat_with_ai(user_id:int, prompt:list, ai_id:str, message:str):
+    store_chat_message(user_id=user_id, message=message, ai_character_id=ai_id)
     try:
-        response = llm.invoke(
+        response= llm.invoke(
             prompt
         )
         for event in response:
-            history = store_chat_message(user_id, event[-1])
-            return {"response": event[-1]}  # ✅ Return the text response
+            store_chat_message(user_id=user_id, message=event[-1], ai_character_id=ai_id)
+            return {"response":event[-1]}  # ✅ Return the text response
     except Exception as e:
         return {"error": str(e)}
+
+@app.post("/history")
+def get_chat_history(request:ConversationHistory):
+    #fetch history with user and ai id
+    user= get_user(request.password, request.username)
+    history = retrieve_previous_chat(user["user_id"], request.ai_id)
+    return history
 
 
 @app.post("/chat")
@@ -168,13 +228,15 @@ async def chat_text(request: Message):
     prompt_user = get_user(request.password, request.username)
 
     # retreive message
-    get_msg = retrieve_chat(prompt_user["user_id"], request.message)
+    get_msg = retrieve_chat(user_id=prompt_user["user_id"], message=request.message, ai_id=request.ai_character_id)
 
     # chat with AI
-    response = chat_with_ai(prompt_user["user_id"], get_msg)
+    response = chat_with_ai(user_id=prompt_user["user_id"], prompt=get_msg, ai_id=request.ai_character_id,
+                            message=request.message)
 
     return response
 
+# conversation endpoint using langraph
 @app.post("/converse")
 async def handle_conversation(body: PromptMessage):
     # chat with AI
